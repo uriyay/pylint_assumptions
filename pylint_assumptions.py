@@ -17,7 +17,9 @@ class AssumptionsChecker(BaseChecker):
     priority = -1
     msgs = {
         'W0001': (
-            'Assumptions are violated when %s() calls to %s().\nAssumtpions are: %s',
+            '\n'.join(['Assumptions are violated when %s() calls to %s().',
+                '\tCaller assumtpions are: %s', '\tWhile callee assumptions are: %s',
+                '\tThe bad assumption is: %s']),
             ASSUMPTIONS_VIOLATED,
             'An assumption that you made in your code is violated'
         ),
@@ -131,17 +133,26 @@ class AssumptionsChecker(BaseChecker):
             matches_funcs = ((x,y) for x,y in self.functions_assumptions if x.name == callee_name)
             for callee, callee_assumptions in matches_funcs:
                 #check current assumptions
-                current_assumptions = assumptions + callee_assumptions
                 self.solver.reset()
-                for asm in current_assumptions:
+                for asm in assumptions:
                     self.solver.add(asm)
-                if self.solver.check() == unsat:
-                    #add message - TODO: add a path here
-                    self.add_message(self.ASSUMPTIONS_VIOLATED, node=func,
-                            args=('->'.join(path),callee.name,current_assumptions))
-                #now - check the inner calls, but now with current_assumptions
-                self.logger.debug(f'recursive: {func.qname()} called {callee.qname()}')
-                self.check_assumptions(callee, current_assumptions, path=path+[callee.qname(),])
+                    #TODO: self.solver.check() here
+                #add callee_assumptions
+                should_skip_recursive = False
+                for asm in callee_assumptions:
+                    self.solver.add(asm)
+                    if self.solver.check() == unsat:
+                        self.add_message(self.ASSUMPTIONS_VIOLATED, node=func,
+                            args=('->'.join(path),callee.name,assumptions,callee_assumptions,asm))
+                        #do not continue - we might not know if there is another assumption violation
+                        #or if its the current assumption
+                        should_skip_recursive = True
+                        break
+                if not should_skip_recursive:
+                    #now - check the inner calls, but now with current_assumptions
+                    self.logger.debug(f'recursive: {func.qname()} called {callee.qname()}')
+                    current_assumptions = assumptions + callee_assumptions
+                    self.check_assumptions(callee, current_assumptions, path=path+[callee.qname(),])
 
     def check_all_assumptions(self):
         self.logger.debug(f'all: {self.functions_assumptions}')
