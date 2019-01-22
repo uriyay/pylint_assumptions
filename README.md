@@ -40,7 +40,7 @@ But it calls func2 which will raise an exception.
 
 Run pylint on this file by running:
 ```
-./run_sample.sh
+./run.sh ./sample.py
 ```
 
 It will write this message:
@@ -48,6 +48,11 @@ It will write this message:
 W:  1, 0: Assumptions are violated when test.func1() calls to func2().
 Assumtpions are: [Not(throw), throw] (assumptions-violated)
 ```
+
+## Setup
+
+You can use ```./run.sh FILENAME``` for running the lint checker.
+You can also copy pylint_assumptions.py to pylint/checkers.
 
 ## Future plans
 1. Adding assumptions **inside** a function
